@@ -1,0 +1,1 @@
+{"dependencies":{},"description":"Backend service for the Fresh Reviews Popup Wix app: fetches and caches Google reviews per place and serves them to the widget.","engines":{"node":">=18"},"main":"server.js","name":"fresh-reviews-popup-server","private":true,"scripts":{"start":"node server.js","start:mock":"MOCK=1 node server.js"},"version":"0.1.0"}
