@@ -187,6 +187,20 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/plan') {
       return handlePlanStub(req, res, url);
     }
+    if (req.method === 'GET' && url.pathname === '/widget.js') {
+      // The hosted widget script (Wix Custom Element script URL). The file
+      // sits next to server.js in the repo/deployment root.
+      const widgetPath = path.join(__dirname, 'reviews-widget-core.js');
+      return fs.readFile(widgetPath, (err, data) => {
+        if (err) return sendJson(res, 404, { error: 'Widget script not installed' });
+        res.writeHead(200, {
+          'Content-Type': 'application/javascript; charset=utf-8',
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'public, max-age=3600'
+        });
+        res.end(data);
+      });
+    }
     if (req.method === 'POST' && url.pathname.startsWith('/webhooks/wix/')) {
       return await handleWixWebhookStub(req, res, url);
     }
