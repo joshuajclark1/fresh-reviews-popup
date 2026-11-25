@@ -187,6 +187,18 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/plan') {
       return handlePlanStub(req, res, url);
     }
+    if (req.method === 'GET' && (url.pathname === '/settings' || url.pathname === '/settings.html')) {
+      // The app settings panel (Wix settings action button Panel URL).
+      const settingsPath = path.join(__dirname, 'settings.html');
+      return fs.readFile(settingsPath, (err, data) => {
+        if (err) return sendJson(res, 404, { error: 'Settings page not installed' });
+        res.writeHead(200, {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Access-Control-Allow-Origin': '*'
+        });
+        res.end(data);
+      });
+    }
     if (req.method === 'GET' && url.pathname === '/widget.js') {
       // The hosted widget script (Wix Custom Element script URL). The file
       // sits next to server.js in the repo/deployment root.

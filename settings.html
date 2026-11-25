@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fresh Reviews Popup — Settings</title>
+<!--
+  Fresh Reviews Popup settings panel.
+
+  Lets the site owner pick which business's Google reviews the popup
+  shows: type a business name, search (backed by /api/places/search on
+  this same service), click the right result.
+
+  Standalone behaviour: the choice is kept in this browser's local
+  storage and the Place ID is shown so it can be copied wherever the
+  widget is configured. When this page runs inside the Wix app settings
+  panel, the app framework passes the selection to the widget; that
+  wiring ships with the app scaffold and does not change this page's
+  search flow.
+-->
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0; padding: 24px; line-height: 1.45;
+  }
+  main { max-width: 520px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p.sub { margin: 0 0 20px; opacity: .75; font-size: 14px; }
+  label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+  .row { display: flex; gap: 8px; }
+  input[type="search"] {
+    flex: 1; padding: 10px 12px; font-size: 15px; border-radius: 8px;
+    border: 1px solid #b9c2cc; background: transparent; color: inherit;
+  }
+  button {
+    padding: 10px 16px; font-size: 15px; border-radius: 8px; border: 0;
+    background: #1b3a56; color: #fff; cursor: pointer; font-weight: 600;
+  }
+  button.secondary { background: transparent; color: inherit; border: 1px solid #b9c2cc; }
+  #status { min-height: 20px; font-size: 14px; margin: 12px 0 0; opacity: .8; }
+  ul#results { list-style: none; margin: 12px 0 0; padding: 0; }
+  ul#results li {
+    border: 1px solid #d5dbe1; border-radius: 10px; padding: 12px 14px;
+    margin-bottom: 8px; cursor: pointer;
+  }
+  ul#results li:hover { border-color: #5a8cb2; }
+  ul#results .name { font-weight: 600; }
+  ul#results .addr { font-size: 13px; opacity: .75; }
+  #selected {
+    display: none; border: 1px solid #5a8cb2; border-radius: 10px;
+    padding: 14px; margin-top: 16px;
+  }
+  #selected .name { font-weight: 700; font-size: 16px; }
+  #selected .addr { font-size: 13px; opacity: .75; margin-bottom: 8px; }
+  #selected code {
+    display: block; font-size: 12.5px; word-break: break-all;
+    background: rgba(127,127,127,.15); padding: 8px; border-radius: 6px; margin-bottom: 10px;
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Fresh Reviews Popup</h1>
+  <p class="sub">Choose the business whose Google reviews this site will show.</p>
+
+  <label for="q">Search for your business</label>
+  <div class="row">
+    <input type="search" id="q" placeholder="Business name and city" autocomplete="off">
+    <button id="go" type="button">Search</button>
+  </div>
+  <p id="status" role="status"></p>
+  <ul id="results"></ul>
+
+  <section id="selected" aria-live="polite">
+    <div class="name" id="selName"></div>
+    <div class="addr" id="selAddr"></div>
+    <label>Place ID</label>
+    <code id="selId"></code>
+    <button id="copy" type="button" class="secondary">Copy Place ID</button>
+  </section>
+</main>
+
+<script>
+(function () {
+  var q = document.getElementById('q');
+  var go = document.getElementById('go');
+  var status = document.getElementById('status');
+  var results = document.getElementById('results');
+  var selected = document.getElementById('selected');
+  var selName = document.getElementById('selName');
+  var selAddr = document.getElementById('selAddr');
+  var selId = document.getElementById('selId');
+  var copy = document.getElementById('copy');
+
+  function showSelected(place) {
+    selName.textContent = place.name || '';
+    selAddr.textContent = place.address || '';
+    selId.textContent = place.placeId || '';
+    selected.style.display = 'block';
+    try { localStorage.setItem('frp.selectedPlace', JSON.stringify(place)); } catch (e) {}
+  }
+
+  function search() {
+    var text = q.value.trim();
+    if (!text) { status.textContent = 'Type a business name to search.'; return; }
+    status.textContent = 'Searching…';
+    results.innerHTML = '';
+    fetch('/api/places/search?q=' + encodeURIComponent(text))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var list = (data && data.results) || [];
+        if (!list.length) { status.textContent = 'No matches. Try the business name plus its city.'; return; }
+        status.textContent = 'Tap your business to select it.';
+        list.forEach(function (place) {
+          var li = document.createElement('li');
+          var n = document.createElement('div'); n.className = 'name'; n.textContent = place.name || '';
+          var a = document.createElement('div'); a.className = 'addr'; a.textContent = place.address || '';
+          li.appendChild(n); li.appendChild(a);
+          li.addEventListener('click', function () {
+            showSelected(place);
+            status.textContent = 'Selected. The popup will show reviews for this business.';
+          });
+          results.appendChild(li);
+        });
+      })
+      .catch(function () { status.textContent = 'Search failed. Check your connection and try again.'; });
+  }
+
+  go.addEventListener('click', search);
+  q.addEventListener('keydown', function (e) { if (e.key === 'Enter') search(); });
+  copy.addEventListener('click', function () {
+    if (navigator.clipboard) navigator.clipboard.writeText(selId.textContent);
+    copy.textContent = 'Copied';
+    setTimeout(function () { copy.textContent = 'Copy Place ID'; }, 1500);
+  });
+
+  try {
+    var saved = localStorage.getItem('frp.selectedPlace');
+    if (saved) showSelected(JSON.parse(saved));
+  } catch (e) {}
+})();
+</script>
+</body>
+</html>
